@@ -89,6 +89,10 @@
         <div style="flex:1"></div>
         <div class="badge" id="itemsCount">0 elementos</div>
       </div>
+<div id="preview" style="margin-top:20px;">
+    <h3>Previsualización:</h3>
+    <img id="previewImg" style="max-width:300px; border: 2px solid #ccc;">
+</div>
 
       <div style="display:flex; gap:12px; align-items:center">
         <input id="searchTop" class="input" placeholder="buscar..." style="max-width:420px">
@@ -141,6 +145,11 @@
     let currentBranch = '';
 
     // helpers
+    function previewFile(path) {
+    const img = document.getElementById("previewImg");
+    img.src = path;             // muestra la imagen
+}
+
     function iconFor(name, type){
       const ext = name.split('.').pop().toLowerCase();
       if(type === 'dir') return '📁';
