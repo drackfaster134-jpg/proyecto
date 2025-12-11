@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Mi Drive - GitHub Pages</title>
+  <style>
+    :root{
+      --bg:#f3f4f6; --card:#fff; --muted:#6b7280; --accent:#2563eb; --radius:12px;
+    }
+    [data-theme="dark"]{ --bg:#0b1220; --card:#071225; --muted:#9ca3af; --accent:#60a5fa; }
+    *{box-sizing:border-box}
+    body{font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; margin:0; background:var(--bg); color:var(--muted)}
+
+    /* layout */
+    .app{display:grid; grid-template-columns:260px 1fr; min-height:100vh}
+    .sidebar{padding:18px; background:linear-gradient(180deg,rgba(255,255,255,0.6),transparent); backdrop-filter: blur(6px);}
+    .brand{font-weight:700; color:var(--accent); font-size:20px; margin-bottom:14px}
+    .controls{display:flex; gap:8px; margin-bottom:12px}
+    .input, .select{width:100%; padding:8px 10px; border-radius:10px; border:1px solid rgba(0,0,0,0.06); background:var(--card); color:inherit}
+    .btn{padding:8px 10px; border-radius:10px; border:0; cursor:pointer; background:var(--accent); color:white}
+    .muted{color:var(--muted)}
+
+    /* main */
+    .main{padding:22px}
+    .toolbar{display:flex; gap:12px; align-items:center; margin-bottom:18px}
+    .breadcrumbs{font-size:14px; color:var(--muted)}
+    .grid{display:grid; grid-template-columns: repeat(auto-fill,minmax(160px,1fr)); gap:16px; margin-top:18px}
+
+    .card{background:var(--card); padding:12px; border-radius:var(--radius); box-shadow:0 6px 18px rgba(2,6,23,0.06); text-align:center; min-height:120px; display:flex; flex-direction:column; justify-content:space-between}
+    .icon{font-size:34px; margin-bottom:8px}
+    .filename{font-size:13px; color:var(--muted); word-break:break-word}
+    .actions{display:flex; gap:8px; justify-content:center; margin-top:10px}
+    .small{font-size:12px; padding:6px 8px}
+
+    /* preview modal */
+    .modal{position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(2,6,23,0.5);}
+    .modal.open{display:flex}
+    .modal-content{width:90%; max-width:1000px; background:var(--card); padding:16px; border-radius:12px}
+    .modal-header{display:flex; justify-content:space-between; align-items:center}
+
+    /* responsive */
+    @media (max-width:900px){.app{grid-template-columns:1fr} .sidebar{display:flex; gap:8px; overflow:auto}}
+
+    /* badges */
+    .badge{display:inline-block; padding:4px 8px; border-radius:999px; font-size:12px; background:rgba(0,0,0,0.04)}
+
+    /* search highlight */
+    mark{background:transparent; color:var(--accent); font-weight:600}
+
+    /* small footer */
+    .footer{margin-top:20px; font-size:12px; color:var(--muted)}
+  </style>
+</head>
+<body data-theme="light">
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">MiDrive · GitHub Pages</div>
+
+      <div style="margin-bottom:8px">
+        <!-- IMPORTANT: cambia este valor por tu repo en formato USUARIO/REPO -->
+        <input id="repoInput" class="input" placeholder="usuario/repo (ej: miuser/mirepo)" value="TU_USUARIO/TU_REPO">
+      </div>
+
+      <div style="display:flex; gap:8px; margin-bottom:8px">
+        <input id="pathInput" class="input" placeholder="ruta (carpeta)" value="">
+      </div>
+
+      <div style="display:flex; gap:8px; margin-bottom:12px">
+        <select id="branchInput" class="select"><option value="main">main</option><option value="master">master</option></select>
+      </div>
+
+      <div style="display:flex; gap:8px; margin-bottom:12px">
+        <button id="loadBtn" class="btn">Cargar</button>
+        <button id="themeBtn" class="btn" style="background:transparent; color:var(--accent); border:1px solid rgba(0,0,0,0.06)">Modo</button>
+      </div>
+
+      <div style="margin-top:14px">
+        <div style="font-size:13px; margin-bottom:6px">Buscar / Filtrar</div>
+        <input id="searchInput" class="input" placeholder="buscar por nombre...">
+      </div>
+
+      <div class="footer">Tips: 1) Coloca tu repo público. 2) Habilita GitHub Pages en la rama elegida. 3) Añade carpetas y archivos desde GitHub o GitHub Desktop.</div>
+    </aside>
+
+    <main class="main">
+      <div class="toolbar">
+        <div class="breadcrumbs" id="breadcrumbs">/</div>
+        <div style="flex:1"></div>
+        <div class="badge" id="itemsCount">0 elementos</div>
+      </div>
+
+      <div style="display:flex; gap:12px; align-items:center">
+        <input id="searchTop" class="input" placeholder="buscar..." style="max-width:420px">
+      </div>
+
+      <div id="grid" class="grid" aria-live="polite"></div>
+    </main>
+  </div>
+
+  <!-- modal preview -->
+  <div id="modal" class="modal" role="dialog" aria-hidden="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div id="modalTitle" style="font-weight:700"></div>
+        <div>
+          <a id="downloadLink" class="btn small" target="_blank">Descargar</a>
+          <button id="closeModal" class="btn small" style="background:transparent; color:var(--accent); border:1px solid rgba(0,0,0,0.06)">Cerrar</button>
+        </div>
+      </div>
+      <div id="modalBody" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+  <script>
+    // ---------------------
+    // Config
+    // ---------------------
+    // Cambia el valor por defecto en el input de la barra lateral. No dejamos el repo fijo
+
+    const $ = sel => document.querySelector(sel);
+    const grid = $('#grid');
+    const repoInput = $('#repoInput');
+    const pathInput = $('#pathInput');
+    const branchInput = $('#branchInput');
+    const loadBtn = $('#loadBtn');
+    const itemsCount = $('#itemsCount');
+    const breadcrumbs = $('#breadcrumbs');
+    const modal = $('#modal');
+    const modalBody = $('#modalBody');
+    const modalTitle = $('#modalTitle');
+    const downloadLink = $('#downloadLink');
+    const closeModal = $('#closeModal');
+    const themeBtn = $('#themeBtn');
+    const searchInput = $('#searchInput');
+    const searchTop = $('#searchTop');
+
+    let currentFiles = [];
+    let currentPath = '';
+    let currentRepo = '';
+    let currentBranch = '';
+
+    // helpers
+    function iconFor(name, type){
+      const ext = name.split('.').pop().toLowerCase();
+      if(type === 'dir') return '📁';
+      if(['png','jpg','jpeg','gif','svg','webp'].includes(ext)) return '🖼️';
+      if(['mp4','webm','mov','ogg'].includes(ext)) return '🎞️';
+      if(['mp3','wav','m4a'].includes(ext)) return '🎵';
+      if(['pdf'].includes(ext)) return '📕';
+      if(['zip','tar','gz','rar'].includes(ext)) return '🗜️';
+      if(['md','txt','json','js','py','html','css'].includes(ext)) return '📄';
+      return '📎';
+    }
+
+    function humanSize(n){ if(!n && n!==0) return ''; if(n<1024) return n+' B'; n/=1024; if(n<1024) return n.toFixed(1)+' KB'; n/=1024; return n.toFixed(2)+' MB'; }
+
+    function setTheme(next){ document.body.setAttribute('data-theme', next); localStorage.setItem('mibdrive-theme', next);} 
+    const saved = localStorage.getItem('mibdrive-theme') || 'light'; setTheme(saved);
+    themeBtn.addEventListener('click', ()=> setTheme(document.body.getAttribute('data-theme') === 'light' ? 'dark' : 'light'));
+
+    async function fetchContents(repo, path='', branch='main'){
+      const encodedPath = encodeURIComponent(path).replace(/%2F/g, '/');
+      const api = `https://api.github.com/repos/${repo}/contents/${path}?ref=${branch}`;
+      const res = await fetch(api).catch(e=>null);
+      if(!res) throw new Error('Error de conexión');
+      if(res.status === 404) throw new Error('Repositorio o ruta no encontrada');
+      if(res.status === 403) throw new Error('Límite de API excedido o repositorio privado');
+      const data = await res.json();
+      if(!Array.isArray(data)) throw new Error('La ruta no es una carpeta o está vacía');
+      return data;
+    }
+
+    function render(items){
+      grid.innerHTML='';
+
+      const filesAndDirs = items
+        .sort((a,b)=> (a.type===b.type)? a.name.localeCompare(b.name): (a.type==='dir'?-1:1));
+
+      filesAndDirs.forEach(item=>{
+        const card = document.createElement('div');
+        card.className='card';
+
+        const top = document.createElement('div');
+        top.style.display='flex'; top.style.flexDirection='column'; top.style.alignItems='center';
+
+        const ico = document.createElement('div'); ico.className='icon'; ico.textContent = iconFor(item.name, item.type);
+        const name = document.createElement('div'); name.className='filename'; name.innerHTML = highlightSearch(item.name);
+        const meta = document.createElement('div'); meta.style.fontSize='12px'; meta.style.color='var(--muted)'; meta.style.marginTop='6px';
+        if(item.type==='file') meta.textContent = humanSize(item.size) || '';
+
+        top.appendChild(ico); top.appendChild(name); top.appendChild(meta);
+        card.appendChild(top);
+
+        const actions = document.createElement('div'); actions.className='actions';
+
+        if(item.type === 'dir'){
+          const open = document.createElement('button'); open.textContent='Abrir'; open.className='btn small'; open.addEventListener('click', ()=> openDir(item.path)); actions.appendChild(open);
+        } else {
+          const view = document.createElement('button'); view.textContent='Previsualizar'; view.className='btn small'; view.addEventListener('click', ()=> previewFile(item));
+          const dl = document.createElement('a'); dl.className='btn small'; dl.textContent='Descargar'; dl.href = item.download_url; dl.target='_blank'; dl.rel='noopener';
+          actions.appendChild(view); actions.appendChild(dl);
+        }
+
+        card.appendChild(actions);
+        grid.appendChild(card);
+      });
+
+      itemsCount.textContent = `${items.length} elementos`;
+    }
+
+    function highlightSearch(text){
+      const q = (searchInput.value || searchTop.value || '').trim();
+      if(!q) return escapeHtml(text);
+      const re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'ig');
+      return escapeHtml(text).replace(re, m=>`<mark>${m}</mark>`);
+    }
+    function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    function openDir(path){ pathInput.value = path; load(); }
+
+    async function previewFile(item){
+      modal.classList.add('open'); modal.setAttribute('aria-hidden','false');
+      modalTitle.textContent = item.name;
+      downloadLink.href = item.download_url;
+      modalBody.innerHTML = '<div style="padding:30px;text-align:center">Cargando...</div>';
+
+      const ext = item.name.split('.').pop().toLowerCase();
+      if(['png','jpg','jpeg','gif','svg','webp'].includes(ext)){
+        modalBody.innerHTML = `<img src="${item.download_url}" style="max-width:100%; height:auto; border-radius:8px">`;
+      } else if(['mp4','webm','ogg','mov'].includes(ext)){
+        modalBody.innerHTML = `<video controls style="max-width:100%"><source src="${item.download_url}"></video>`;
+      } else if(['mp3','wav','m4a'].includes(ext)){
+        modalBody.innerHTML = `<audio controls style="width:100%"><source src="${item.download_url}"></audio>`;
+      } else if(['md','txt','js','py','html','css','json'].includes(ext)){
+        // use raw URL to fetch text
+        const raw = item.download_url;
+        try{
+          const r = await fetch(raw); const txt = await r.text();
+          modalBody.innerHTML = `<pre style="white-space:pre-wrap; max-height:60vh; overflow:auto; background:var(--bg); padding:12px; border-radius:8px">${escapeHtml(txt)}</pre>`;
+        }catch(e){ modalBody.innerHTML = '<div>Error cargando archivo</div>'; }
+      } else if(ext==='pdf'){
+        modalBody.innerHTML = `<iframe src="${item.download_url}" style="width:100%; height:70vh; border:0" />`;
+      } else {
+        modalBody.innerHTML = `<div style="padding:30px;text-align:center">Formato no previsualizable. Usa "Descargar" para obtener el archivo.</div>`;
+      }
+    }
+
+    closeModal.addEventListener('click', ()=>{ modal.classList.remove('open'); modal.setAttribute('aria-hidden','true'); });
+    modal.addEventListener('click', (e)=>{ if(e.target === modal) { modal.classList.remove('open'); modal.setAttribute('aria-hidden','true'); } });
+
+    // load and handle search
+    async function load(){
+      currentRepo = repoInput.value.trim();
+      currentPath = pathInput.value.trim();
+      currentBranch = branchInput.value.trim() || 'main';
+      breadcrumbs.textContent = '/' + (currentPath || '');
+      grid.innerHTML = '<div style="padding:40px; text-align:center">Cargando...</div>';
+      try{
+        const items = await fetchContents(currentRepo, currentPath, currentBranch);
+        currentFiles = items;
+        render(filterBySearch(items));
+      }catch(e){ grid.innerHTML = `<div style="padding:30px; color:#b91c1c">${e.message}</div>`; itemsCount.textContent = '0 elementos'; }
+    }
+
+    function filterBySearch(items){
+      const q = (searchInput.value || searchTop.value || '').trim().toLowerCase();
+      if(!q) return items;
+      return items.filter(it=> it.name.toLowerCase().includes(q));
+    }
+
+    // events
+    loadBtn.addEventListener('click', ()=> load());
+    searchInput.addEventListener('input', ()=> render(filterBySearch(currentFiles)));
+    searchTop.addEventListener('input', ()=> { searchInput.value = searchTop.value; render(filterBySearch(currentFiles)); });
+
+    // quick load if user pressed enter on repo input
+    repoInput.addEventListener('keydown', e=>{ if(e.key === 'Enter') load(); });
+    pathInput.addEventListener('keydown', e=>{ if(e.key === 'Enter') load(); });
+
+    // try to auto-load if repo is set
+    window.addEventListener('load', ()=>{
+      // fill branch by asking GitHub API for default branch (best-effort, silent)
+      const repo = repoInput.value.trim();
+      if(repo && repo !== 'TU_USUARIO/TU_REPO'){
+        fetch(`https://api.github.com/repos/${repo}`).then(r=>r.json()).then(js=>{ if(js && js.default_branch) branchInput.value = js.default_branch; }).catch(()=>{});
+        // auto load
+        load();
+      } else {
+        grid.innerHTML = `<div style="padding:40px; text-align:center">Introduce tu <strong>usuario/repo</strong> en la barra lateral y presiona <strong>Cargar</strong>.</div>`;
+      }
+    });
+
+    // keyboard: / to focus search
+    window.addEventListener('keydown', e=>{ if(e.key==='/' && document.activeElement.tagName !== 'INPUT') { e.preventDefault(); searchTop.focus(); } });
+
+    // Accessibility small improvements
+    loadBtn.setAttribute('aria-label','Cargar contenido del repositorio');
+
+    // end script
+  </script>
+</body>
+</html>
