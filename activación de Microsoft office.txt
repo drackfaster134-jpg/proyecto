@@ -1,0 +1,37 @@
+activación de Microsoft office
+
+Método 1 - PowerShell ❤️
+
+Abre PowerShell: haz clic derecho en el símbolo de Windows y clic en la opción PowerShell administrador
+
+Copia y pega el código de abajo y luego pulsa enter.
+
+Para Windows 8, 10, 11: 📌
+
+" irm https://get.activated.win | iex "
+
+Si lo anterior está bloqueado (por el ISP/DNS), prueba esto (necesita Windows 10 o 11 actualizado):
+
+" iex (curl.exe -s --doh-url https://1.1.1.1/dns-query https://get.activated.win | Out-String) "
+
+Para Windows 7 y versiones posteriores:
+
+" iex ((New-Object Net.WebClient).DownloadString('https://get.activated.win')) "
+
+si el script no se inicia usa el meto dos que esta abajo
+
+Aparecerá el menú de activación. Elige las opciones resaltadas en verde para activar Windows u Office.
+
+¡Hecho!
+
+
+Método 2 - Tradicional (Windows Vista y posteriores)
+
+
+Descarga el guion: MAS_AIO.cmd o el código postal completo.
+
+Ejecuta el archivo llamado .MAS_AIO.cmd
+
+Verás las opciones de activación. Sigue las instrucciones en pantalla.
+
+Es todo.
